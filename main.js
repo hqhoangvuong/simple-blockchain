@@ -1,17 +1,24 @@
 const SHA256 = require('crypto-js/sha256');
 
+class Transaction {
+    constructor(fromAddress, toAddress, amount) {
+        this.fromAddress = fromAddress;
+        this.toAddress = toAddress;
+        this.amount = amount;
+    }
+}
+
 class Block {
-    constructor(idx, timestamp, data, prevHash) {
-        this.index = idx;
+    constructor(timestamp, transactions, prevHash) {
         this.timestamp = timestamp;
-        this.data = data;
+        this.transactions = transactions;
         this.previousHash = prevHash;
         this.hash = this.calcHash();
         this.nonce = 0;
     }
 
     calcHash() {
-        return SHA256(this.index + this.previousHash + this.timestamp + JSON.stringify(this.data) + this.nonce).toString();
+        return SHA256(this.previousHash + this.timestamp + JSON.stringify(this.transactions) + this.nonce).toString();
     }
 
     mineBlock(difficulty) {
@@ -27,21 +34,51 @@ class Block {
 class BlockChain {
     constructor() {
         this.chain = [this.createGenesisBlock()];
-        this.difficulty = 2;
+        this.difficulty = 3;
+        this.pendingTransactions = [];
+        this.miningReward = 100;
     }
 
     createGenesisBlock() {
-        return new Block(0, '01/01/1970', 'This is the genesis block', '-1');
+        return new Block('01/01/1970', 'This is the genesis block', '-1');
     }
 
     getLastBlock() {
         return this.chain[this.chain.length - 1];
     }
 
-    addBlock(newBlock) {
-        newBlock.previousHash = this.getLastBlock().hash;
-        newBlock.mineBlock(this.difficulty);
-        this.chain.push(newBlock);
+    miningPendingTransactions(miningRewardAddress) {
+        let block = new Block(Date.now(), this.pendingTransactions);
+        block.mineBlock(this.difficulty);
+
+        console.log('Block successfully mined!');
+        this.chain.push(block);
+
+        this.pendingTransactions = [
+            new Transaction(null, miningRewardAddress, this.miningReward)
+        ];
+    }
+
+    createTransaction(transaction) {
+        this.pendingTransactions.push(transaction);
+    }
+
+    getBalanceOfAddress(address) {
+        let balance = 0;
+
+        for(const block of this.chain) {
+            for(const trans of block.transactions) {
+                if (trans.fromAddress === address) {
+                    balance -= trans.amount;
+                }
+
+                if (trans.toAddress === address) {
+                    balance += trans.amount;
+                }
+            }
+        }
+
+        return balance;
     }
 
     isChainValid() {
@@ -62,29 +99,14 @@ class BlockChain {
 }
 
 
-// let hikariCoin = new BlockChain();
+let hikariCoin = new BlockChain();
+hikariCoin.createTransaction(new Transaction('addr1', 'addr2', 100));
+hikariCoin.createTransaction(new Transaction('addr2', 'addr1', 50));
 
-// console.log("\nMining block 1 ...");
-// hikariCoin.addBlock(new Block(1, new Date().getTime(), { amount: 4 }));
+console.log('\nStarting the miner ...');
+hikariCoin.miningPendingTransactions('VuongHuynh-address');
+console.log('\nBalance of Vuong Huynh is: ' + hikariCoin.getBalanceOfAddress('VuongHuynh-address'));
 
-// console.log("\nMining block 2 ...");
-// hikariCoin.addBlock(new Block(2, new Date().getTime(), { amount: 10 }));
-
-// console.log("\nMining block 3 ...");
-// hikariCoin.addBlock(new Block(3, new Date().getTime(), { amount: 1 }));
-
-// console.log("\nMining block 4 ...");
-// hikariCoin.addBlock(new Block(4, new Date().getTime(), { amount: 3 }));
-
-// console.log(JSON.stringify(hikariCoin, null, 4));
-
-// console.log("Is my chain valid: " + hikariCoin.isChainValid());
-
-// hikariCoin.chain[2].data = { amount: 999999999};
-// hikariCoin.chain[2].hash = hikariCoin.chain[2].calcHash();
-
-// console.log("Is my chain valid: " + hikariCoin.isChainValid());
-
-
-data = JSON.stringify({ amount: 999999999} + 3).toString();
-console.log(data);
+console.log('\nStarting the miner again ...');
+hikariCoin.miningPendingTransactions('VuongHuynh-address');
+console.log('\nBalance of Vuong Huynh is: ' + hikariCoin.getBalanceOfAddress('VuongHuynh-address'));
